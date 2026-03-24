@@ -4,3 +4,7 @@
 *.tfvars
 .DS_Store
 crash.log
+# Backup files
+*.bak
+*.backup
+*.broken
