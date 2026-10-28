@@ -8,3 +8,11 @@ crash.log
 *.bak
 *.backup
 *.broken
+
+# Terraform recovery files
+terraform-recovery-plan.txt
+terraform-recovery-backup/
+
+*.tfplan
+terraform-recovery-plan.txt
+terraform-recovery-backup/
