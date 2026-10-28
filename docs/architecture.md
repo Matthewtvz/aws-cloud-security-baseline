@@ -2,107 +2,82 @@
 
 ## Current Architecture
 
+The AWS Cloud Security Baseline is deployed using Terraform, with its primary infrastructure configured in the `ap-southeast-2` (Sydney) region. It establishes foundational identity, networking, encryption, logging and configuration visibility controls.
+
 ```text
                          AWS Account
-                             |
-              +--------------+--------------+
-              |              |              |
-              v              v              v
-             IAM            VPC        Visibility
-              |              |              |
-       Account Controls      |       +------+------+
-                             |       |             |
-                       +-----+-----+ v             v
-                       |           | CloudTrail  AWS Config
-                    Public      Private    |          |
-                    Subnet      Subnet     +----+-----+
-                       |                       |
-                Internet Gateway              v
-                                         S3 Log Storage
-                                               |
-                                               v
-                                         KMS Encryption
+                              |
+           +------------------+------------------+
+           |                  |                  |
+           v                  v                  v
+          IAM                VPC              Visibility
+           |                  |                  |
+    Account Controls   +------+------+    +------+------+
+                       |             |    |             |
+                       v             v    v             v
+                     Public       Private CloudTrail  AWS Config
+                     Subnet       Subnet      |            |
+                       |             |       |            |
+                   Route to      No direct    +------+-----+
+                   Internet      internet           |
+                   Gateway       route              v
+                                            Centralised S3
+                                              Log Bucket
+                                                  |
+                                             Uses SSE-KMS
+                                                  |
+                                                  v
+                                            Customer-Managed
+                                               KMS Key
 ```
 
-### Current Security Layers
+This diagram represents the logical security architecture rather than a complete network traffic flow. CloudTrail and AWS Config are AWS account-level services and do not depend on the VPC subnets.
 
-The current architecture establishes security foundations across identity, networking, logging, encryption, and configuration visibility.
+The S3 logging bucket uses server-side encryption with AWS KMS (SSE-KMS). The customer-managed KMS key protects the encryption keys used for stored log objects; it is not a separate destination through which logs travel.
 
-### Identity
+---
 
-- IAM account password policy
-- Password complexity and reuse controls
-- AWS service IAM roles
+## Current Security Layers
 
-### Network
+### Identity and Access Management
 
-- Custom VPC
-- Public and private subnets
-- Separate public and private route tables
-- Internet Gateway for public connectivity
-- Private subnet without direct internet routing
+- IAM account password policy with password complexity and reuse requirements.
+- AWS service roles for logging and configuration recording.
+- Resource-based policies governing CloudTrail, AWS Config, S3 and KMS integrations.
+- Scoped permissions supporting authorised service operations.
+
+These controls establish identity and access boundaries for the security infrastructure.
+
+### Network Security
+
+- Custom VPC with public and private subnets.
+- Separate public and private route tables.
+- Internet Gateway and public route for internet connectivity.
+- Private subnet without a direct route to the Internet Gateway.
+
+The network provides a foundation for future private workloads, network segmentation and additional security controls.
+
+A public subnet route does not automatically make every resource publicly accessible. Actual access also depends on resource configuration and applicable network security controls.
 
 ### Visibility and Logging
 
-- Multi-region AWS CloudTrail
-- AWS Config configuration recording
-- Centralised S3 log storage
-- S3 public-access blocking
-- S3 versioning
-- AWS KMS encryption
-- Automatic KMS key rotation
+- Multi-region AWS CloudTrail for recording supported AWS account activity.
+- AWS Config configuration recorder for supported resource configuration changes.
+- Centralised S3 bucket for CloudTrail logs and AWS Config delivery.
+- S3 Block Public Access and bucket versioning.
+- Customer-managed AWS KMS key for encryption.
+- Terraform-managed logging, storage and encryption policies.
 
-The environment is managed through Terraform to provide repeatable and auditable infrastructure configuration.
+CloudTrail provides an audit trail of supported AWS API activity, while AWS Config provides information about supported resource configurations and changes.
 
----
+These services provide complementary visibility capabilities.
 
-## Future Architecture
+### Encryption and Access Boundaries
 
-The architecture will progressively extend the existing security baseline into detection, investigation, response, and automation.
+The S3 logging bucket uses SSE-KMS as its default encryption configuration. CloudTrail is explicitly configured to use the customer-managed KMS key.
 
-```text
-Secure Infrastructure
-        |
-        v
-Visibility
-        |
-        v
-Detection
-        |
-        v
-Investigation
-        |
-        v
-Response
-        |
-        v
-Automation
-```
+KMS key policies and IAM permissions support authorised service access to cryptographic operations. S3 bucket policies govern which services can write to the centralised logging destination.
 
-Future capabilities may include CloudWatch monitoring, GuardDuty threat detection, security alerting, EventBridge-based event processing, Lambda automation, and SNS notifications.
+CloudTrail does not enforce permissions on AWS activity; it records events for auditing and investigation. Similarly, AWS Config provides configuration visibility rather than replacing preventive security controls.
 
-Detailed implementation phases are maintained in the project roadmap.
-
----
-
-## Architectural Principles
-
-The platform is designed around five core principles:
-
-1. Visibility
-2. Security by Design
-3. Operational Understanding
-4. Automation
-5. Continuous Improvement
-
-These principles guide the evolution of the project from foundational AWS security controls toward broader cloud security operations.
-
----
-
-## Long-Term Vision
-
-This project began as an AWS Cloud Security Baseline built with Terraform.
-
-The long-term vision is to evolve it into a Cloud Security Operations Platform that demonstrates how secure infrastructure develops into visibility, detection, investigation, response, and automation.
-
-The objective is not simply to deploy AWS services, but to understand how security controls interact and how secure cloud environments are designed, monitored, investigated, and continuously improved.
+These distinctions preserve separation between security enforcement, monitoring and evidence
